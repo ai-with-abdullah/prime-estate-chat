@@ -447,22 +447,47 @@
     addMessage(text, 'user');
     addTyping();
 
-    try {
-      const res = await fetch(WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatInput: text, sessionId, action: 'sendMessage' })
-      });
-      removeTyping();
-      if (!res.ok) throw new Error('error');
-      const data = await res.json();
-      const reply = data.output || data.text || data.message || 'How can I help you further?';
-      addMessage(reply, 'agent');
-    } catch {
-      removeTyping();
-      addMessage('Sorry, having trouble connecting. Please try again shortly.', 'agent');
+    let res;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 40000);
+        res = await fetch(WEBHOOK, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chatInput: text, sessionId, action: 'sendMessage' }),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        break;
+      } catch (err) {
+        if (attempt === 1) {
+          removeTyping();
+          addMessage('Ahmed is unavailable at the moment. Please try again in a few seconds or click Book Now above to schedule directly.', 'agent');
+          return;
+        }
+        await new Promise(r => setTimeout(r, 3000));
+      }
     }
+
+    removeTyping();
+    if (!res || !res.ok) {
+      addMessage('Ahmed is unavailable at the moment. Please try again in a few seconds or click Book Now above to schedule directly.', 'agent');
+      return;
+    }
+    const data = await res.json();
+    const reply = data.output || data.text || data.message || 'How can I help you further?';
+    addMessage(reply, 'agent');
   }
+
+  // Keep Railway awake every 4 minutes
+  setInterval(() => {
+    fetch(WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatInput: 'ping', sessionId: 'keepalive', action: 'sendMessage' })
+    }).catch(() => {});
+  }, 240000);
 </script>
 </body>
 </html>
