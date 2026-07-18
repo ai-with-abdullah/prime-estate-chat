@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "prime-estate-agent"
+version = "1.0.0"
+description = "Production agentic WhatsApp lead system for real estate: a model drives the conversation, typed Python boundaries drive every consequential action."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Muhammad Abdullah" }]
+dependencies = [
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "groq>=0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "mypy>=1.10",
+    "ruff>=0.5",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prime_estate"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests", "config"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = [
+    "SIM108",  # ternaries are not always clearer than if/else
+    "UP042",   # domain enums deliberately spell out (str, Enum); no behavioural gain from StrEnum
+]
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+packages = ["prime_estate"]
+strict = true
+# The Groq SDK client is injected as `object` and called dynamically behind
+# the ChatModel protocol; the adapter carries its own targeted ignore.
+warn_unused_ignores = false
