@@ -32,6 +32,7 @@ from prime_estate.domain.models import AgentReply, InboundMessage, Intent, LeadS
 from prime_estate.llm.groq_client import ChatMessage
 from prime_estate.tools.base import CalendarTool, LeadDatastore
 from prime_estate.tools.calendar import SlotUnavailableError
+from prime_estate.tools.email import LeadNotifier
 from prime_estate.utils.dates import upcoming_dates
 from prime_estate.utils.logging import get_logger
 
@@ -56,12 +57,14 @@ class Orchestrator:
         sessions: SessionStore,
         calendar: CalendarTool,
         datastore: LeadDatastore,
+        notifier: LeadNotifier | None = None,
     ) -> None:
         self._router = router
         self._registry = registry
         self._sessions = sessions
         self._calendar = calendar
         self._datastore = datastore
+        self._notifier = notifier
         self._history: dict[str, list[ChatMessage]] = {}
 
     def handle(self, message: InboundMessage) -> AgentReply:
@@ -144,6 +147,14 @@ class Orchestrator:
             "booked %s %s %s (row %d, event %s, score %s)",
             lead.email, lead.meeting_date, lead.meeting_time, row, event_id, lead.score,
         )
+        # Notification is best-effort by design: the booking is already
+        # persisted, and a mail-server hiccup must never surface to the client
+        # as a failed booking. Failures are logged for follow-up, not raised.
+        if self._notifier is not None:
+            try:
+                self._notifier.booking_confirmed(lead=lead)
+            except Exception as exc:  # noqa: BLE001 — see comment above
+                logger.warning("booking email to %s failed: %s", lead.email, exc)
         return reply
 
     def _offer_alternatives(self, *, lead_date: str, lead_time: str) -> AgentReply:

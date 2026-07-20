@@ -53,3 +53,23 @@ class Settings(BaseSettings):
         default="INFO",
         description="Root log level for the prime_estate logger namespace.",
     )
+    google_service_account_file: str = Field(
+        default="",
+        description=(
+            "Path to a Google service-account JSON key. When set together with "
+            "sheet_id / calendar_id, the Google-backed tools replace the "
+            "in-memory ones at the composition root."
+        ),
+    )
+    timezone: str = Field(
+        default="Asia/Karachi",
+        description="IANA timezone used for calendar events.",
+    )
+    gmail_user: str = Field(
+        default="",
+        description="Gmail address used to send booking confirmations.",
+    )
+    gmail_app_password: str = Field(
+        default="",
+        description="Gmail app password (not the account password). Empty disables email.",
+    )
